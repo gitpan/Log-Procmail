@@ -1,0 +1,10 @@
+Changes
+README
+MANIFEST
+Makefile.PL
+Procmail.pm
+t/
+t/procmail.log
+t/procmail2.log
+t/object.t
+t/abstract.t
