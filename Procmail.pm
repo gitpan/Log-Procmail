@@ -2,14 +2,13 @@ package Log::Procmail;
 
 require 5.005;
 use strict;
-use Carp;
 use vars qw/ $VERSION /;
 local $^W = 1;
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 my %month;
-@month{qw/ Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec / } = (0..11);
+@month{qw/ Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec /} = ( 0 .. 11 );
 
 =head1 NAME
 
@@ -58,8 +57,9 @@ will return the new records.
 sub new {
     my $class = shift;
     return bless {
-        fh    => new IO::File,
-        files => [@_],
+        fh     => new IO::File,
+        files  => [@_],
+        errors => 0,
     }, $class;
 }
 
@@ -102,7 +102,6 @@ sub next {
     my $read;
     READ: {
         while (<$fh>) {
-            /^procmail: / && next;    # ignore debug comments
             $read++;
 
             # should carp if doesn't get what's expected
@@ -112,20 +111,33 @@ sub next {
                 # assert: $read == 1;
                 $rec->from($1);
                 $rec->date($2);
+                next;
             };
 
             # assert: $read == 2;
-            /^ Subject: (.*)/          && do { $rec->subject($1) };
-            /^  Folder: (\S+)\s+(\d+)/ && do {
+            /^ Subject: (.*)/i && do { $rec->subject($1); next; };
+
+            # procmail tabulates with tabs and spaces... :-(
+            # assert: $read == 3;
+            /^  Folder: (.*?)\s+(\d+)$/ && do {
 
                 # assert: $read == 3;
                 $rec->folder($1);
                 $rec->size($2);
                 last;
             };
+
+            # fall through: some error message
+            # shall we ignore it?
+            next unless $log->{errors};
+
+            # or return it?
+            chomp;
+            $rec = $_;
+            last;
         }
 
-        # in case we couldn't read a line
+        # in case we couldn't read the first line
         if ( !$read ) {
 
             # go to next file
@@ -155,6 +167,21 @@ and keeps returning abstracts.
 sub push {
     my $log = shift;
     push @{ $log->{files} }, @_;
+}
+
+=item $log->errors( [bool] );
+
+Set or get the error flag. If set, when the next() method will return
+the string found in the log file, instead of ignoring it. Be careful:
+it is a simple string, not a Log::Procmail::Abstract object.
+
+Default is to return no error.
+
+=cut
+
+sub errors {
+    my $self = shift;
+    @_ ? $self->{errors} = shift: $self->{errors};
 }
 
 # *internal method*
@@ -194,6 +221,7 @@ Log::Procmail::next() returns a Log::Procmail::Abstract object.
 
 package Log::Procmail::Abstract;
 
+use Carp;
 use vars '$AUTOLOAD';
 
 sub new {
@@ -246,10 +274,10 @@ you think it is. C<;-)> This method is read-only.
 
 sub ymd {
     my $self = shift;
-    #croak "Log::Procmail::Abstract::ymd cannot be used to set the date"
-    #  if shift;
+    croak("Log::Procmail::Abstract::ymd cannot be used to set the date")
+      if @_;
     $self->{date} =~ /^... (...) (..) (..):(..):(..) .*(\d\d\d\d)$/;
-    return sprintf( "%04d%02d%02d$3$4$5", $6, $month{$1}+1, $2 );
+    return sprintf( "%04d%02d%02d$3$4$5", $6, $month{$1} + 1, $2 );
 }
 
 =back
@@ -259,6 +287,8 @@ sub ymd {
 The Log::Procmail object should be able to read from STDIN.
 
 =head1 BUGS
+
+The ymd() method should be smarter.
 
 Please report all bugs through the rt.cpan.org interface:
 
