@@ -1,11 +1,17 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Log-Procmail
-version:      0.10
-version_from: lib/Log/Procmail.pm
-installdirs:  site
+---
+name: Log-Procmail
+version: 0.11
+author:
+  - Philippe "BooK" Bruhat <book@cpan.org>
+abstract: Perl extension for reading procmail logfiles.
+license: perl
 requires:
-    Test::More:                    0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+  Test::More: 0
+provides:
+  Log::Procmail:
+    file: lib/Log/Procmail.pm
+    version: 0.11
+  Log::Procmail::Abstract:
+    file: lib/Log/Procmail.pm
+    version: 0.11
+generated_by: Module::Build version 0.26
